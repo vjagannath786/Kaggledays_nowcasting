@@ -5,6 +5,7 @@ class NocDataset:
     def __init__(self, data, targets, is_test=False):
         self.data = data
         self.targets = targets
+        self.is_test = is_test
 
     def __len__(self):
         return len(self.data)
@@ -14,7 +15,7 @@ class NocDataset:
         current_data = self.data[idx,:]
         current_target = self.targets[idx]
 
-        if is_test:
+        if self.is_test:
             return {
             "data": torch.tensor(current_data, dtype=torch.float),
             #"target": torch.tensor(current_target, dtype=torch.int)

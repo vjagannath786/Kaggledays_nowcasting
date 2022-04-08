@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
+from torch.utils.data import DataLoader
 import pandas as pd
 import os
 import numpy as np
 
 import config
-import dataset
+from dataset import NocDataset
 import engine
 from model import NoCModel
 
@@ -77,11 +77,11 @@ def run_training(train, test):
         y_train, y_val = y.iloc[trn_ind], y.iloc[val_ind]
 
 
-        train_ds = NocDataset(data= x_train, targets=y_train, is_test=False)
+        train_ds = NocDataset(data= x_train.values, targets=y_train.values, is_test=False)
 
-        valid_ds = NocDataset(data=x_val, targets=y_val, is_test=False)
+        valid_ds = NocDataset(data=x_val.values, targets=y_val.values, is_test=False)
 
-        test_ds = NocDataset(data=x_test, ,is_test=True)
+        test_ds = NocDataset(data=x_test.values, targets='',is_test=True)
 
         train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=2,
                           pin_memory=False, drop_last=True)
@@ -95,20 +95,32 @@ def run_training(train, test):
         model = NoCModel()
         model.to(config.DEVICE)
 
-        optimizer = optim.Adam(lr=config.learning_rate)
+        optimizer = optim.Adam(model.parameters(),lr=config.learning_rate)
 
         _loss = 1000
+        v_preds = []
+        t_preds = []
+
         for epoch in range(config.EPOCHS):
             train_loss = engine.train_fn(model, train_loader, optimizer)
             valid_preds, valid_loss = engine.eval_fn(model, val_loader)
+            test_preds,_ = engine.eval_fn(model, test_loader)
 
             print(f'train loss is {train_loss} and valid loss is {valid_loss}')
-
+            
+            if valid_loss < _loss:
+                v_preds = valid_preds
+                t_preds = test_preds
+                _loss = valid_loss
             
 
 
+        oof_predictions[val_ind] = v_preds
 
-        return 
+        test_predictions += t_preds
+
+
+        return np.array(test_predictions).mean(axis=0)
 
 
 
