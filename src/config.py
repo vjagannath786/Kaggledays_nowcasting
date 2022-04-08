@@ -1,2 +1,2 @@
-BATCH_SIZE =32
-PATH = '../../'
+BATCH_SIZE =16
+PATH = '../../input/nowcastingweather/'

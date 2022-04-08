@@ -9,7 +9,7 @@ def loss_fn():
 class NoCModel(nn.Module):
     def __init__(self):
         super(NoCModel, self).__init__()
-        self.lstm_1 = nn.LSTM(13,128)
+        self.lstm_1 = nn.LSTM(45,128)
         self.linear = nn.Linear(128,1)
         self.relu = nn.ReLU(128)
     
