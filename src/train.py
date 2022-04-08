@@ -63,7 +63,7 @@ def run_training(train, test):
 
     x = train.drop(['rain','chunk_id'], axis = 1)
     y = train['rain']
-    x_test = test.drop(['rain_prediction','chunk_id'],axis=1)
+    x_test = test.drop(['rain_prediction','chunk_id'],axis=1).values
 
     oof_predictions = np.zeros(x.shape[0])
     # Create test array to store predictions
@@ -73,15 +73,15 @@ def run_training(train, test):
 
     for fold, (trn_ind, val_ind) in enumerate(kfold.split(x)):
         print(f'Training fold {fold + 1}')
-        x_train, x_val = x.iloc[trn_ind], x.iloc[val_ind]
-        y_train, y_val = y.iloc[trn_ind], y.iloc[val_ind]
+        x_train, x_val = x.iloc[trn_ind].values, x.iloc[val_ind].values
+        y_train, y_val = y.iloc[trn_ind].values, y.iloc[val_ind].values
 
 
-        train_ds = NocDataset(data= x_train.values, targets=y_train.values, is_test=False)
+        train_ds = NocDataset(data= x_train, targets=y_train, is_test=False)
 
-        valid_ds = NocDataset(data=x_val.values, targets=y_val.values, is_test=False)
+        valid_ds = NocDataset(data=x_val, targets=y_val, is_test=False)
 
-        test_ds = NocDataset(data=x_test.values, targets='',is_test=True)
+        test_ds = NocDataset(data=x_test, targets='',is_test=True)
 
         train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=2,
                           pin_memory=False, drop_last=True)

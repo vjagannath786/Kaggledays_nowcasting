@@ -10,6 +10,7 @@ def train_fn(model, data_loader, optimizer):
     for data in tk0:
 
         for key, value in data.items():
+            print(key)
             data[key] = value.to(config.DEVICE)
         
         

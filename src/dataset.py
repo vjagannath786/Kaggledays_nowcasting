@@ -17,13 +17,13 @@ class NocDataset:
 
         if self.is_test:
             return {
-            "data": torch.tensor(current_data, dtype=torch.float),
+            "x":torch.tensor(current_data, dtype=torch.float),
             #"target": torch.tensor(current_target, dtype=torch.int)
         }
         else:
             return {
-            "data": torch.tensor(current_data, dtype=torch.float),
-            "target": torch.tensor(current_target, dtype=torch.int)
+            "x":torch.tensor(current_data, dtype=torch.float),
+            "targets":torch.tensor(current_target, dtype=torch.int)
         }
 
 
