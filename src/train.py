@@ -81,11 +81,14 @@ def run_training(train, test):
 
         valid_ds = NocDataset(data=x_val, targets=y_val)
 
-        train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=NW,
+        train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=2,
                           pin_memory=False, drop_last=True)
 
-        val_loader = DataLoader(val_ds, batch_size=config.BATCH_SIZE, shuffle=False, num_workers=NW,
+        val_loader = DataLoader(valid_ds, batch_size=config.BATCH_SIZE, shuffle=False, num_workers=2,
                           pin_memory=False, drop_last=False)
+
+        model = NoCModel()
+        model.to_device(config.DEVICE)
 
 
 
