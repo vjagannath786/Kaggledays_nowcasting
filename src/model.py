@@ -15,6 +15,8 @@ class NoCModel(nn.Module):
     
     def forward(self, x, targets=None):
 
+        print(x.shape)
+
         x,_ = self.lstm_1(x)
 
         x = self.linear(x)

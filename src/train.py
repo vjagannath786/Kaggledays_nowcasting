@@ -21,12 +21,19 @@ def preprocess():
     sensor = pd.read_csv(os.path.join(config.PATH,'sensor.csv'))
     submission = pd.read_csv(os.path.join(config.PATH,'sample_submission.csv'))
 
+    #tmp = sensor.groupby('chunk_id').size().reset_index().reset_index()
+    #del tmp[0]
 
-    tmp = sensor.set_index(['chunk_id','time'])['rain'].unstack().reset_index()
-    tmp.fillna(0, inplace=True)
-    train_df = train.merge(tmp, on='chunk_id', how='left')
-    sample_df = submission.merge(tmp, on='chunk_id', how='left')
+    #sensor = sensor.merge(tmp, on='chunk_id',how='left')
 
+    sensor.drop(['date','time'],axis=1, inplace=True)
+
+    #tmp = sensor.set_index(['chunk_id','time'])['rain'].unstack().reset_index()
+    #tmp.fillna(0, inplace=True)
+    train_df = train.drop(['rain'],axis=1).merge(sensor, on='chunk_id', how='left')
+    sample_df = submission.drop(['rain_prediction'],axis=1).merge(sensor, on='chunk_id', how='left')
+
+    '''
     _aggs = {
           'tempc': [ np.mean],
           'feelslikec':[np.min, np.max, np.mean],
@@ -52,6 +59,8 @@ def preprocess():
 
     sample_df = sample_df.merge(tmp_sensor, left_on='chunk_id', right_on='chunk_id', how='left')
 
+    '''
+
     return train_df, sample_df
 
 
@@ -61,9 +70,9 @@ def preprocess():
 def run_training(train, test):
 
 
-    x = train.drop(['rain','chunk_id'], axis = 1)
+    x = train.drop(['rain','chunk_id','stationid'], axis = 1)
     y = train['rain']
-    x_test = test.drop(['rain_prediction','chunk_id'],axis=1).values
+    x_test = test.drop(['rain','chunk_id','stationid'],axis=1).values
 
     oof_predictions = np.zeros(x.shape[0])
     # Create test array to store predictions
@@ -73,8 +82,8 @@ def run_training(train, test):
 
     for fold, (trn_ind, val_ind) in enumerate(kfold.split(x)):
         print(f'Training fold {fold + 1}')
-        x_train, x_val = x.iloc[trn_ind].values, x.iloc[val_ind].values
-        y_train, y_val = y.iloc[trn_ind].values, y.iloc[val_ind].values
+        x_train, x_val = x.loc[trn_ind], x.loc[val_ind]
+        y_train, y_val = y.loc[trn_ind], y.loc[val_ind]
 
 
         train_ds = NocDataset(data= x_train, targets=y_train, is_test=False)
@@ -120,7 +129,7 @@ def run_training(train, test):
         test_predictions += t_preds
 
 
-        return np.array(test_predictions).mean(axis=0)
+        return oof_predictions, np.array(test_predictions).mean(axis=0)
 
 
 
@@ -135,3 +144,7 @@ if __name__ == "__main__":
 
 
     test_predictions = run_training(train, test)
+
+    print(train.loc[train.chunk_id == '2397129cde'])
+
+    print(test.head())
