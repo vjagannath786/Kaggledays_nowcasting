@@ -77,9 +77,11 @@ def run_training(train, test):
         y_train, y_val = y.iloc[trn_ind], y.iloc[val_ind]
 
 
-        train_ds = NocDataset(data= x_train, targets=y_train)
+        train_ds = NocDataset(data= x_train, targets=y_train, is_test=False)
 
-        valid_ds = NocDataset(data=x_val, targets=y_val)
+        valid_ds = NocDataset(data=x_val, targets=y_val, is_test=False)
+
+        test_ds = NocDataset(data=x_test, ,is_test=True)
 
         train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=2,
                           pin_memory=False, drop_last=True)
@@ -87,8 +89,28 @@ def run_training(train, test):
         val_loader = DataLoader(valid_ds, batch_size=config.BATCH_SIZE, shuffle=False, num_workers=2,
                           pin_memory=False, drop_last=False)
 
+        test_loader = DataLoader(valid_ds, batch_size=config.BATCH_SIZE, shuffle=False, num_workers=2,
+                          pin_memory=False, drop_last=False)
+
         model = NoCModel()
-        model.to_device(config.DEVICE)
+        model.to(config.DEVICE)
+
+        optimizer = optim.Adam(lr=config.learning_rate)
+
+        _loss = 1000
+        for epoch in range(config.EPOCHS):
+            train_loss = engine.train_fn(model, train_loader, optimizer)
+            valid_preds, valid_loss = engine.eval_fn(model, val_loader)
+
+            print(f'train loss is {train_loss} and valid loss is {valid_loss}')
+
+            
+
+
+
+        return 
+
+
 
 
 

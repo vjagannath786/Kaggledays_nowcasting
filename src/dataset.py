@@ -2,7 +2,7 @@ import torch
 
 
 class NocDataset:
-    def __init__(self, data, targets):
+    def __init__(self, data, targets, is_test=False):
         self.data = data
         self.targets = targets
 
@@ -14,7 +14,16 @@ class NocDataset:
         current_data = self.data[idx,:]
         current_target = self.targets[idx]
 
-        return {
+        if is_test:
+            return {
+            "data": torch.tensor(current_data, dtype=torch.float),
+            #"target": torch.tensor(current_target, dtype=torch.int)
+        }
+        else:
+            return {
             "data": torch.tensor(current_data, dtype=torch.float),
             "target": torch.tensor(current_target, dtype=torch.int)
         }
+
+
+        

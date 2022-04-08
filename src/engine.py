@@ -3,7 +3,7 @@ import torch
 import config
 
 
-def train_fn(model, data_loader, optimizer, scheduler):
+def train_fn(model, data_loader, optimizer):
     model.train()
     fin_loss = 0
     tk0 = tqdm(data_loader, total=len(data_loader))
@@ -21,7 +21,7 @@ def train_fn(model, data_loader, optimizer, scheduler):
         loss.backward()
         optimizer.step()
 		
-        scheduler.step()
+        #scheduler.step()
         fin_loss += loss.item()
     return fin_loss / len(data_loader)
 
