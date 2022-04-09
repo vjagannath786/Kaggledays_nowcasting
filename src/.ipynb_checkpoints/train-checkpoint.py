@@ -21,34 +21,12 @@ def preprocess():
     sensor = pd.read_csv(os.path.join(config.PATH,'sensor.csv'))
     submission = pd.read_csv(os.path.join(config.PATH,'sample_submission.csv'))
 
-    #tmp = sensor.groupby('chunk_id').size().reset_index().reset_index()
-    #del tmp[0]
 
-    #sensor = sensor.merge(tmp, on='chunk_id',how='left')
+    tmp = sensor.set_index(['chunk_id','time'])['rain'].unstack().reset_index()
+    tmp.fillna(0, inplace=True)
+    train_df = train.merge(tmp, on='chunk_id', how='left')
+    sample_df = submission.merge(tmp, on='chunk_id', how='left')
 
-    numeric_features = [col for col in sensor.columns if sensor[col].dtype == np.float64]
-    
-
-    sensor.drop(['date','time'],axis=1, inplace=True)
-
-    #tmp = sensor.set_index(['chunk_id','time'])['rain'].unstack().reset_index()
-    #tmp.fillna(0, inplace=True)
-    #train_df = train.drop(['rain'],axis=1).merge(sensor, on='chunk_id', how='left')
-    #sample_df = submission.drop(['rain_prediction'],axis=1).merge(sensor, on='chunk_id', how='left')
-
-
-    F_matrix = sensor[numeric_features].values.reshape(sensor.shape[0]//23, 23, len(numeric_features))
-    numeric_features += ["uvindex", "isday", "time", "days", "rain"]
-
-    index_df = sensor[["chunk_id", "stationid"]].drop_duplicates()
-    index_df["idx"] = np.arange(index_df.shape[0])
-    
-
-    train = train.merge(index_df, on="chunk_id")
-
-    submission = submission.merge(index_df, on="chunk_id")
-
-    '''
     _aggs = {
           'tempc': [ np.mean],
           'feelslikec':[np.min, np.max, np.mean],
@@ -74,9 +52,7 @@ def preprocess():
 
     sample_df = sample_df.merge(tmp_sensor, left_on='chunk_id', right_on='chunk_id', how='left')
 
-    '''
-
-    return F_matrix, train, submission
+    return train_df, sample_df
 
 
 
@@ -85,9 +61,9 @@ def preprocess():
 def run_training(train, test):
 
 
-    x = train.drop(['rain','chunk_id','stationid'], axis = 1)
+    x = train.drop(['rain','chunk_id'], axis = 1)
     y = train['rain']
-    x_test = test.drop(['rain_prediction','chunk_id','stationid'],axis=1).values
+    x_test = test.drop(['rain_prediction','chunk_id'],axis=1)
 
     oof_predictions = np.zeros(x.shape[0])
     # Create test array to store predictions
@@ -97,15 +73,15 @@ def run_training(train, test):
 
     for fold, (trn_ind, val_ind) in enumerate(kfold.split(x)):
         print(f'Training fold {fold + 1}')
-        x_train, x_val = x.loc[trn_ind], x.loc[val_ind]
-        y_train, y_val = y.loc[trn_ind], y.loc[val_ind]
+        x_train, x_val = x.iloc[trn_ind], x.iloc[val_ind]
+        y_train, y_val = y.iloc[trn_ind], y.iloc[val_ind]
 
 
-        train_ds = NocDataset(F_matrix=F_matrix,data= x_train, targets=y_train, is_test=False)
+        train_ds = NocDataset(data= x_train.values, targets=y_train.values, is_test=False)
 
-        valid_ds = NocDataset(F_matrix=F_matrix,data=x_val, targets=y_val, is_test=False)
+        valid_ds = NocDataset(data=x_val.values, targets=y_val.values, is_test=False)
 
-        test_ds = NocDataset(F_matrix=F_matrix,data=x_test, targets='',is_test=True)
+        test_ds = NocDataset(data=x_test.values, targets='',is_test=True)
 
         train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=2,
                           pin_memory=False, drop_last=True)
@@ -113,7 +89,7 @@ def run_training(train, test):
         val_loader = DataLoader(valid_ds, batch_size=config.BATCH_SIZE, shuffle=False, num_workers=2,
                           pin_memory=False, drop_last=False)
 
-        test_loader = DataLoader(test_ds, batch_size=config.BATCH_SIZE, shuffle=False, num_workers=2,
+        test_loader = DataLoader(valid_ds, batch_size=config.BATCH_SIZE, shuffle=False, num_workers=2,
                           pin_memory=False, drop_last=False)
 
         model = NoCModel()
@@ -144,7 +120,7 @@ def run_training(train, test):
         test_predictions += t_preds
 
 
-        return oof_predictions, np.array(test_predictions).mean(axis=0)
+        return np.array(test_predictions).mean(axis=0)
 
 
 
@@ -154,12 +130,8 @@ def run_training(train, test):
 if __name__ == "__main__":
 
     
-    F_matrix, train, test = preprocess()
+    train, test = preprocess()
 
 
 
     test_predictions = run_training(train, test)
-
-    #print(train.loc[train.chunk_id == '2397129cde'])
-
-    #print(test.head())

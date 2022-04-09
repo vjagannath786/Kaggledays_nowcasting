@@ -2,9 +2,10 @@ import torch
 
 
 class NocDataset:
-    def __init__(self, data, targets, is_test=False):
-        self.data = data
-        self.targets = targets
+    def __init__(self, F_matrix, data, targets, is_test=False):
+        self.F_matrix = F_matrix
+        self.data = data.values
+        self.targets = targets.values
         self.is_test = is_test
 
     def __len__(self):
@@ -12,7 +13,7 @@ class NocDataset:
 
     def __getitem__(self, idx):
 
-        current_data = self.data[idx,:]
+        current_data = self.F_matrix[self.data[idx]]
         current_target = self.targets[idx]
 
         if self.is_test:
