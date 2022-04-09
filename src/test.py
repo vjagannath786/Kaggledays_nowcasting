@@ -5,11 +5,13 @@ import pandas as pd
 from dataset import NocDataset
 
 
-df = pd.read_csv('../../sensor.csv')
+df = pd.read_csv('../../working/submission.csv')
 
 
-dataset = NocDataset(data=df.drop(['chunk_id','stationid','date','time','rain'], axis=1).values, targets= df['rain'].values)
+#dataset = NocDataset(data=df.drop(['chunk_id','stationid','date','time','rain'], axis=1).values, targets= df['rain'].values)
 
 
 #dataloader = DataLoader(dataset,5)
-print(df.drop(['chunk_id','stationid','date','time','rain'], axis=1).columns)
+#print(df.drop(['chunk_id','stationid','date','time','rain'], axis=1).columns)
+
+print(df['rain_prediction'].unique())

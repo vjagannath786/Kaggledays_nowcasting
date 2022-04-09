@@ -1,6 +1,6 @@
-BATCH_SIZE =16
-#PATH = '../../input/nowcastingweather/'
-PATH = '../../'
+BATCH_SIZE =128
+PATH = '../../input/nowcastingweather/'
+#PATH = '../../'
 DEVICE = 'cuda'
 learning_rate = 3e-4
-EPOCHS = 5
+EPOCHS = 10

@@ -13,6 +13,29 @@ import engine
 from model import NoCModel
 
 from sklearn.model_selection import KFold
+from sklearn.metrics import confusion_matrix
+
+
+def quadKappa(act,pred,n=4,hist_range=(0,3)):
+    
+    O = confusion_matrix(act,pred)
+    O = np.divide(O,np.sum(O))
+    
+    W = np.zeros((n,n))
+    for i in range(n):
+        for j in range(n):
+            W[i][j] = ((i-j)**2)/((n-1)**2)
+            
+    act_hist = np.histogram(act,bins=n,range=hist_range)[0]
+    prd_hist = np.histogram(pred,bins=n,range=hist_range)[0]
+    
+    E = np.outer(act_hist,prd_hist)
+    E = np.divide(E,np.sum(E))
+    
+    num = np.sum(np.multiply(W,O))
+    den = np.sum(np.multiply(W,E))
+        
+    return 1-np.divide(num,den)
 
 
 def preprocess():
@@ -26,10 +49,13 @@ def preprocess():
 
     #sensor = sensor.merge(tmp, on='chunk_id',how='left')
 
-    numeric_features = [col for col in sensor.columns if sensor[col].dtype == np.float64]
-    
+    sensor["days"] = (pd.to_datetime(sensor["date"]) - pd.to_datetime("2021-01-01")).dt.days
+    sensor = sensor.sort_values(["stationid", "days", "time"]).reset_index(drop=True)
 
-    sensor.drop(['date','time'],axis=1, inplace=True)
+    numeric_features = [col for col in sensor.columns if sensor[col].dtype == np.float64]
+    numeric_features += ["uvindex", "isday", "time", "days", "rain"]
+
+    #sensor.drop(['date','time'],axis=1, inplace=True)
 
     #tmp = sensor.set_index(['chunk_id','time'])['rain'].unstack().reset_index()
     #tmp.fillna(0, inplace=True)
@@ -38,7 +64,7 @@ def preprocess():
 
 
     F_matrix = sensor[numeric_features].values.reshape(sensor.shape[0]//23, 23, len(numeric_features))
-    numeric_features += ["uvindex", "isday", "time", "days", "rain"]
+    
 
     index_df = sensor[["chunk_id", "stationid"]].drop_duplicates()
     index_df["idx"] = np.arange(index_df.shape[0])
@@ -85,9 +111,9 @@ def preprocess():
 def run_training(train, test):
 
 
-    x = train.drop(['rain','chunk_id','stationid'], axis = 1)
+    x = train['idx']
     y = train['rain']
-    x_test = test.drop(['rain_prediction','chunk_id','stationid'],axis=1).values
+    x_test = test['idx'].values
 
     oof_predictions = np.zeros(x.shape[0])
     # Create test array to store predictions
@@ -97,15 +123,17 @@ def run_training(train, test):
 
     for fold, (trn_ind, val_ind) in enumerate(kfold.split(x)):
         print(f'Training fold {fold + 1}')
-        x_train, x_val = x.loc[trn_ind], x.loc[val_ind]
-        y_train, y_val = y.loc[trn_ind], y.loc[val_ind]
+        x_train, x_val = x.iloc[trn_ind].values, x.iloc[val_ind].values
+        y_train, y_val = y.iloc[trn_ind].values, y.iloc[val_ind].values
 
 
         train_ds = NocDataset(F_matrix=F_matrix,data= x_train, targets=y_train, is_test=False)
 
         valid_ds = NocDataset(F_matrix=F_matrix,data=x_val, targets=y_val, is_test=False)
 
-        test_ds = NocDataset(F_matrix=F_matrix,data=x_test, targets='',is_test=True)
+        test_ds = NocDataset(F_matrix,x_test, '',is_test=True)
+
+        #print(test_ds)
 
         train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=2,
                           pin_memory=False, drop_last=True)
@@ -119,7 +147,8 @@ def run_training(train, test):
         model = NoCModel()
         model.to(config.DEVICE)
 
-        optimizer = optim.Adam(model.parameters(),lr=config.learning_rate)
+        optimizer = optim.Adam(model.parameters(),lr=config.learning_rate, betas=(0.9, 0.999),
+                                 eps=1e-08)
 
         _loss = 1000
         v_preds = []
@@ -128,7 +157,7 @@ def run_training(train, test):
         for epoch in range(config.EPOCHS):
             train_loss = engine.train_fn(model, train_loader, optimizer)
             valid_preds, valid_loss = engine.eval_fn(model, val_loader)
-            test_preds,_ = engine.eval_fn(model, test_loader)
+            test_preds = engine.pred_fn(model, test_loader)
 
             print(f'train loss is {train_loss} and valid loss is {valid_loss}')
             
@@ -138,13 +167,20 @@ def run_training(train, test):
                 _loss = valid_loss
             
 
+        #print(np.concatenate(v_preds,axis=0))
+        a = np.concatenate(v_preds, axis=0)
+        b = np.concatenate(a, axis=0)
+        oof_predictions[val_ind] = b
 
-        oof_predictions[val_ind] = v_preds
+        c = np.concatenate(t_preds, axis=0)
+        d = np.concatenate(c, axis=0)
 
-        test_predictions += t_preds
+
+        print(d)
+        test_predictions += np.clip(np.round(d),0,3)
 
 
-        return oof_predictions, np.array(test_predictions).mean(axis=0)
+    return oof_predictions, [x/5 for x in test_predictions]
 
 
 
@@ -156,10 +192,16 @@ if __name__ == "__main__":
     
     F_matrix, train, test = preprocess()
 
+    print(test.shape)
 
-
-    test_predictions = run_training(train, test)
+    oof_predictions, test_predictions = run_training(train, test)
 
     #print(train.loc[train.chunk_id == '2397129cde'])
 
-    #print(test.head())
+    print(quadKappa(train["rain"].values, np.clip(np.round(oof_predictions), 0, 3)))
+    
+    test['rain_prediction'] = np.round(test_predictions).astype('int')
+
+    test.to_csv('../../working/submission_v1.csv', index=False, columns=['chunk_id', 'rain_prediction'])
+
+    print(test['rain_prediction'].unique())

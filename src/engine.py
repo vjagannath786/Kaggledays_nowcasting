@@ -10,7 +10,7 @@ def train_fn(model, data_loader, optimizer):
     for data in tk0:
 
         for key, value in data.items():
-            print(key)
+            #print(key)
             data[key] = value.to(config.DEVICE)
         
         
@@ -36,7 +36,7 @@ def eval_fn(model, data_loader):
         for data in tk0:
             #a
             for key, value in data.items():
-                #a
+                #print(key)
                 data[key] = value.to(config.DEVICE)
             batch_preds, loss = model(**data)
             fin_loss += loss.item()
@@ -44,3 +44,23 @@ def eval_fn(model, data_loader):
 
     
     return fin_preds, fin_loss / len(data_loader)
+
+
+
+def pred_fn(model, data_loader):
+    model.eval()
+    fin_loss = 0
+    fin_preds = []
+    tk0 = tqdm(data_loader, total=len(data_loader))
+    with torch.no_grad():
+        for data in tk0:
+            #a
+            for key, value in data.items():
+                #print(key)
+                data[key] = value.to(config.DEVICE)
+            batch_preds = model(**data)
+            #fin_loss += loss.item()
+            fin_preds.append(batch_preds.cpu().detach().numpy())
+
+    
+    return fin_preds
