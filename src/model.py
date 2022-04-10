@@ -13,7 +13,9 @@ def loss_fn(x, targets):
 class NoCModel(nn.Module):
     def __init__(self):
         super(NoCModel, self).__init__()
-        self.lstm_1 = nn.LSTM(16,128, num_layers=2, batch_first=True)
+        
+        self.lstm_1 = nn.LSTM(16,500, num_layers=2, batch_first=True)
+        self.lstm_2 = nn.LSTM(500,128, num_layers=2, batch_first=True)
         self.linear = nn.Linear(128,1)
         self.relu = nn.ReLU(128)
     
@@ -22,8 +24,9 @@ class NoCModel(nn.Module):
         
 
         
-
+        
         x,_ = self.lstm_1(x)
+        x,_ = self.lstm_2(x)
 
         x = self.linear(x[:,-1,:])
 
